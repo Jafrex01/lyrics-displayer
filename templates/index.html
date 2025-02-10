@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotify Lyrics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: linear-gradient(180deg, #1e1e1e 0%, #121212 100%);
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .container {
+        max-width: 900px;
+        width: 90%;
+        margin: 2rem auto;
+        padding: 2.5rem;
+        background: rgba(24, 24, 24, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+      }
+
+      .player {
+        display: flex;
+        gap: 3rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .album-art {
+        width: 320px;
+        height: 320px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease;
+      }
+
+      .album-art:hover {
+        transform: scale(1.02);
+      }
+
+      .album-art img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .song-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .song-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .artist-name {
+        font-size: 1.25rem;
+        color: #b3b3b3;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        margin: 1.5rem 0;
+        overflow: hidden;
+      }
+
+      .progress {
+        height: 100%;
+        background: #1db954;
+        border-radius: 3px;
+        transition: width 0.1s linear;
+      }
+
+      .time {
+        font-size: 0.9rem;
+        color: #b3b3b3;
+        font-weight: 500;
+      }
+
+      .lyrics-container {
+        height: 300px;
+        overflow-y: auto;
+        padding: 1.5rem;
+        background: rgba(40, 40, 40, 0.5);
+        border-radius: 12px;
+        scrollbar-width: thin;
+        scrollbar-color: #1db954 transparent;
+        mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+      }
+
+      .lyrics-container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .lyrics-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .lyrics-container::-webkit-scrollbar-thumb {
+        background-color: rgba(29, 185, 84, 0.5);
+        border-radius: 3px;
+      }
+
+      .lyrics-line {
+        padding: 0.75rem 1rem;
+        margin: 0.25rem 0;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 400;
+        cursor: default;
+      }
+
+      .lyrics-line.active {
+        color: #ffffff;
+        font-weight: 600;
+        background: linear-gradient(90deg, #1db95433 0%, #1db95400 100%);
+        border-left: 4px solid #1db954;
+        transform: scale(1.01);
+        letter-spacing: 0.01em;
+      }
+
+      .lyrics-line:not(.active) {
+        transform: scale(1);
+        letter-spacing: normal;
+      }
+
+      .no-song {
+        text-align: center;
+        color: #b3b3b3;
+        padding: 2rem;
+        font-weight: 500;
+        font-size: 1.1rem;
+      }
+
+      @media (max-width: 768px) {
+        .player {
+          flex-direction: column;
+          align-items: center;
+          gap: 2rem;
+        }
+
+        .album-art {
+          width: 280px;
+          height: 280px;
+        }
+
+        .song-title {
+          font-size: 2rem;
+          text-align: center;
+        }
+
+        .artist-name {
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="player-container">
+        <!-- Content will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <script>
+      function formatTime(ms) {
+        const seconds = Math.floor((ms / 1000) % 60);
+        const minutes = Math.floor(ms / 1000 / 60);
+        return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      }
+
+      let currentSongId = null;
+      let lastProgressMs = 0;
+      let isPlaying = false;
+
+      function updateProgressLocally() {
+        if (!isPlaying) return;
+
+        lastProgressMs += 1000;
+        const progressBar = document.getElementById("progress-bar");
+        const timeDisplay = document.getElementById("time-display");
+        const durationMs = parseInt(progressBar.dataset.duration);
+
+        if (lastProgressMs <= durationMs) {
+          const progressPercent = (lastProgressMs / durationMs) * 100;
+          progressBar.style.width = `${progressPercent}%`;
+          timeDisplay.textContent = `${formatTime(lastProgressMs)} / ${formatTime(durationMs)}`;
+
+          // Update lyrics highlighting with strict timing
+          const lyricsContainer = document.getElementById("lyrics-container");
+          const allLyrics = lyricsContainer.getElementsByClassName("lyrics-line");
+          let activeLineFound = false;
+
+          Array.from(allLyrics).forEach((line) => {
+            const startTime = parseInt(line.dataset.time);
+            const nextLine = line.nextElementSibling;
+            const nextStartTime = nextLine ? parseInt(nextLine.dataset.time) : Infinity;
+
+            // Highlight only if we're between this line's start time and the next line's start time
+            if (!activeLineFound && startTime <= lastProgressMs && lastProgressMs < nextStartTime) {
+              if (!line.classList.contains("active")) {
+                line.classList.add("active");
+                // Smooth scroll to keep active line centered
+                line.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+              activeLineFound = true;
+            } else {
+              line.classList.remove("active");
+            }
+          });
+        }
+      }
+
+      function updatePlayer(data) {
+        const container = document.getElementById("player-container");
+
+        if (!data || data.error) {
+          container.innerHTML = '<div class="no-song">No song is currently playing</div>';
+          currentSongId = null;
+          isPlaying = false;
+          return;
+        }
+
+        // Update playing state and progress
+        isPlaying = data.is_playing;
+        lastProgressMs = data.progress_ms;
+
+        // Generate a unique ID for the current song
+        const songId = `${data.name}-${data.artist}`;
+
+        // Only rebuild the entire player if the song has changed
+        if (currentSongId !== songId) {
+          currentSongId = songId;
+
+          container.innerHTML = `
+            <div class="player">
+              <div class="album-art">
+                <img src="${data.album_art}" alt="Album artwork">
+              </div>
+              <div class="song-info">
+                <div class="song-title">${data.name}</div>
+                <div class="artist-name">${data.artist}</div>
+                <div class="progress-bar">
+                  <div class="progress" id="progress-bar" data-duration="${data.duration_ms}"></div>
+                </div>
+                <div class="time" id="time-display"></div>
+              </div>
+            </div>
+            <div class="lyrics-container" id="lyrics-container">
+              ${
+                data.lyrics
+                  ? data.lyrics
+                      .map(
+                        (line) => `
+                <div class="lyrics-line" data-time="${line.startTimeMs}">${line.words}</div>
+              `
+                      )
+                      .join("")
+                  : '<div class="no-song">No lyrics available</div>'
+              }
+            </div>
+          `;
+        }
+
+        // Update progress elements
+        const progressBar = document.getElementById("progress-bar");
+        const timeDisplay = document.getElementById("time-display");
+        const progressPercent = (data.progress_ms / data.duration_ms) * 100;
+
+        progressBar.style.width = `${progressPercent}%`;
+        timeDisplay.textContent = `${formatTime(data.progress_ms)} / ${formatTime(data.duration_ms)}`;
+      }
+
+      async function fetchCurrentSong() {
+        try {
+          const response = await fetch("/current-song");
+          const data = await response.json();
+          updatePlayer(data);
+        } catch (error) {
+          console.error("Error fetching current song:", error);
+        }
+      }
+
+      // Update progress locally every 1 second
+      setInterval(updateProgressLocally, 1000);
+
+      // Fetch from Spotify API every 5 seconds
+      setInterval(fetchCurrentSong, 5000);
+
+      // Initial fetch
+      fetchCurrentSong();
+    </script>
+  </body>
+</html>
