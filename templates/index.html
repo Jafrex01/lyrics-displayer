@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spotify Lyrics</title>
+    <title>Spotify Lyrics & Tasks</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       * {
@@ -17,67 +17,355 @@
         background: linear-gradient(180deg, #1e1e1e 0%, #121212 100%);
         color: white;
         min-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        margin: 0;
+        padding: 2rem;
       }
 
       .container {
-        max-width: 900px;
-        width: 90%;
-        margin: 2rem auto;
-        padding: 2.5rem;
+        max-width: 1800px;
+        height: calc(100vh - 4rem);
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+      }
+
+      .left-section {
         background: rgba(24, 24, 24, 0.95);
         border-radius: 16px;
+        padding: 2.5rem;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 4rem);
+        position: relative;
+      }
+
+      .right-section {
+        background: rgba(24, 24, 24, 0.95);
+        border-radius: 16px;
+        padding: 2.5rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        max-height: calc(100vh - 4rem);
+        display: flex;
+        flex-direction: column;
       }
 
       .player {
         display: flex;
-        gap: 3rem;
-        margin-bottom: 2.5rem;
+        gap: 2rem;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-shrink: 0;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        z-index: 2;
       }
 
       .album-art {
-        width: 320px;
-        height: 320px;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        transition: transform 0.3s ease;
-      }
-
-      .album-art:hover {
-        transform: scale(1.02);
+        width: 150px;
+        height: 150px;
+        flex-shrink: 0;
       }
 
       .album-art img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        border-radius: 12px;
       }
 
       .song-info {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        flex-grow: 1;
       }
 
       .song-title {
-        font-size: 2.5rem;
+        font-size: 1.5rem;
         font-weight: 700;
-        margin-bottom: 0.75rem;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
+        margin-bottom: 0.5rem;
       }
 
       .artist-name {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
         color: #b3b3b3;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .lyrics-container {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        transform: translateY(-20%);
+        height: 50vh;
+        overflow-y: auto;
+        padding: 1.5rem;
+        margin: 0 auto;
+        background: none;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .lyrics-wrapper {
+        padding: 30vh 0;
+      }
+
+      .lyrics-line {
+        padding: 0.5rem 0;
+        margin: 0;
+        transition: all 0.3s ease;
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.3);
+        opacity: 0;
+        transform: translateY(20px);
         font-weight: 500;
+        letter-spacing: 0.02em;
+        text-align: center;
+        width: 100%;
+      }
+
+      .lyrics-line.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .lyrics-line.active {
+        color: #ffffff;
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        transform: scale(1.05);
+      }
+
+      .lyrics-line.nearby {
+        opacity: 0.5;
+        transform: translateY(0);
+      }
+
+      .lyrics-header {
+        position: sticky;
+        top: 0;
+        background: rgba(24, 24, 24, 0.95);
+        padding: 1rem;
+        margin: -1.5rem -1.5rem 1rem -1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px 12px 0 0;
+        font-weight: 600;
+        color: #1db954;
+      }
+
+      .task-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .task-header {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .task-header h2 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      #add-task-btn {
+        background: none;
+        border: 2px solid #1db954;
+        color: #1db954;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      #add-task-btn:hover {
+        background: #1db954;
+        color: white;
+      }
+
+      .task-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        overflow-x: hidden;
+      }
+
+      .task-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.2s ease;
+        transform-origin: center left;
+        position: relative;
+      }
+
+      .task-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateX(5px);
+      }
+
+      .task-checkbox {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 2px solid #1db954;
+        appearance: none;
+        -webkit-appearance: none;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+
+      .task-checkbox:checked {
+        background: #1db954;
+      }
+
+      .task-checkbox:checked::after {
+        content: "✓";
+        position: absolute;
+        color: white;
+        font-size: 14px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .task-content {
+        flex-grow: 1;
+      }
+
+      .task-title {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: white;
+        margin-bottom: 0.3rem;
+      }
+
+      .task-description {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .task-due-date {
+        font-size: 0.8rem;
+        color: #1db954;
+        margin-top: 0.3rem;
+      }
+
+      .priority-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+
+      .priority-1 {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .priority-2 {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+      }
+      .priority-3 {
+        background: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+      }
+
+      .lyrics-container::-webkit-scrollbar {
+        width: 0px;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(5px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: #282828;
+        padding: 2rem;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .modal-content h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        color: white;
+      }
+
+      .modal-content input,
+      .modal-content textarea,
+      .modal-content select {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0.8rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        color: white;
+        font-size: 1rem;
+      }
+
+      .modal-content textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+
+      .modal-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+
+      .btn-primary {
+        background: #1db954;
+        color: white;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
       }
 
       .progress-bar {
@@ -85,8 +373,8 @@
         height: 6px;
         background: rgba(255, 255, 255, 0.1);
         border-radius: 3px;
-        margin: 1.5rem 0;
-        overflow: hidden;
+        margin: 1rem 0;
+        position: relative;
       }
 
       .progress {
@@ -102,62 +390,59 @@
         font-weight: 500;
       }
 
-      .lyrics-container {
-        height: 300px;
-        overflow-y: auto;
-        padding: 1.5rem;
-        background: rgba(40, 40, 40, 0.5);
-        border-radius: 12px;
-        scrollbar-width: thin;
-        scrollbar-color: #1db954 transparent;
-        mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
-      }
-
-      .lyrics-container::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .lyrics-container::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .lyrics-container::-webkit-scrollbar-thumb {
-        background-color: rgba(29, 185, 84, 0.5);
-        border-radius: 3px;
-      }
-
-      .lyrics-line {
-        padding: 0.75rem 1rem;
-        margin: 0.25rem 0;
-        transition: all 0.3s ease;
-        border-radius: 8px;
-        font-size: 1.1rem;
-        color: rgba(255, 255, 255, 0.5);
-        font-weight: 400;
-        cursor: default;
-      }
-
-      .lyrics-line.active {
-        color: #ffffff;
-        font-weight: 600;
-        background: linear-gradient(90deg, #1db95433 0%, #1db95400 100%);
-        border-left: 4px solid #1db954;
-        transform: scale(1.01);
-        letter-spacing: 0.01em;
-      }
-
-      .lyrics-line:not(.active) {
-        transform: scale(1);
-        letter-spacing: normal;
-      }
-
       .no-song {
         text-align: center;
         color: #b3b3b3;
         padding: 2rem;
         font-weight: 500;
         font-size: 1.1rem;
+      }
+
+      .task-confirm {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(40, 40, 40, 0.95);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+
+      .task-confirm.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .task-confirm button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .confirm-yes {
+        background: #dc3545;
+        color: white;
+      }
+
+      .confirm-no {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .task-item.removing {
+        transform: translateX(-100%);
+        opacity: 0;
+        transition: all 0.3s ease;
       }
 
       @media (max-width: 768px) {
@@ -181,12 +466,68 @@
           text-align: center;
         }
       }
+
+      @media (max-width: 1200px) {
+        .container {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .left-section,
+        .right-section {
+          height: auto;
+          position: static;
+        }
+
+        body {
+          padding: 1rem;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <div id="player-container">
-        <!-- Content will be populated by JavaScript -->
+      <div class="left-section">
+        <div id="player-container">
+          <!-- Spotify player content -->
+        </div>
+        <div class="lyrics-container" id="lyrics-container">
+          <div class="lyrics-header">Lyrics</div>
+          <!-- Lyrics will be populated here -->
+        </div>
+      </div>
+
+      <div class="right-section">
+        <div class="task-container">
+          <div class="task-header">
+            <h2>Tasks & Reminders</h2>
+            <button id="add-task-btn" class="btn-primary">Add Task</button>
+          </div>
+          <div class="task-list" id="task-list">
+            <!-- Tasks will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add task modal -->
+    <div class="modal" id="task-modal">
+      <div class="modal-content">
+        <h3>Add New Task</h3>
+        <form id="task-form">
+          <input type="text" id="task-title" placeholder="Task Title" required />
+          <textarea id="task-description" placeholder="Description"></textarea>
+          <input type="datetime-local" id="task-due-date" />
+          <select id="task-priority">
+            <option value="1">Low Priority</option>
+            <option value="2">Medium Priority</option>
+            <option value="3">High Priority</option>
+          </select>
+          <div class="modal-buttons">
+            <button type="submit" class="btn-primary">Save Task</button>
+            <button type="button" class="btn-secondary" onclick="closeTaskModal()">Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -209,7 +550,6 @@
         const timeDiff = now - lastUpdateTime;
         lastUpdateTime = now;
 
-        // Update progress more smoothly
         lastProgressMs += timeDiff;
         const progressBar = document.getElementById("progress-bar");
         const timeDisplay = document.getElementById("time-display");
@@ -220,45 +560,73 @@
           progressBar.style.width = `${progressPercent}%`;
           timeDisplay.textContent = `${formatTime(lastProgressMs)} / ${formatTime(durationMs)}`;
 
-          // Update lyrics highlighting with improved timing
           const lyricsContainer = document.getElementById("lyrics-container");
-          if (lyricsContainer) {
-            const allLyrics = Array.from(lyricsContainer.getElementsByClassName("lyrics-line"));
+          const lyricsWrapper = lyricsContainer.querySelector(".lyrics-wrapper");
+          if (lyricsWrapper) {
+            const allLyrics = Array.from(lyricsWrapper.getElementsByClassName("lyrics-line"));
             let activeIndex = -1;
 
-            // Find the current active line
+            // Find current active line
             for (let i = 0; i < allLyrics.length; i++) {
-              const currentLine = allLyrics[i];
+              const line = allLyrics[i];
+              const startTime = parseInt(line.dataset.time);
               const nextLine = allLyrics[i + 1];
-              const currentStartTime = parseInt(currentLine.dataset.time);
               const nextStartTime = nextLine ? parseInt(nextLine.dataset.time) : Infinity;
 
-              // Add a small buffer (50ms) to prevent flickering
-              if (currentStartTime <= lastProgressMs && lastProgressMs < nextStartTime - 50) {
+              if (startTime <= lastProgressMs && lastProgressMs < nextStartTime - 100) {
                 activeIndex = i;
                 break;
               }
             }
 
-            // Update classes and scroll if needed
+            // Update visibility and active states
             allLyrics.forEach((line, index) => {
+              line.classList.remove("active", "visible", "nearby");
+
+              const distance = Math.abs(index - activeIndex);
+
               if (index === activeIndex) {
-                if (!line.classList.contains("active")) {
-                  line.classList.add("active");
-                  // Smooth scroll with offset
-                  const container = document.getElementById("lyrics-container");
-                  const lineTop = line.offsetTop;
-                  const containerHeight = container.clientHeight;
-                  const scrollTo = lineTop - containerHeight / 2 + line.clientHeight / 2;
-                  container.scrollTo({
-                    top: scrollTo,
-                    behavior: "smooth",
-                  });
-                }
-              } else {
-                line.classList.remove("active");
+                line.classList.add("active", "visible");
+              } else if (distance <= 2) {
+                line.classList.add("nearby", "visible");
               }
             });
+
+            // Scroll to active line
+            if (activeIndex !== -1) {
+              const activeLine = allLyrics[activeIndex];
+              const containerHeight = lyricsContainer.clientHeight;
+              const lineTop = activeLine.offsetTop;
+              const lineHeight = activeLine.clientHeight;
+
+              lyricsContainer.scrollTo({
+                top: lineTop - containerHeight / 2 + lineHeight / 2,
+                behavior: "smooth",
+              });
+            }
+          }
+        }
+      }
+
+      // Optimize the animation loop
+      let animationFrameId = null;
+
+      function animate() {
+        updateProgressLocally();
+        animationFrameId = requestAnimationFrame(animate);
+      }
+
+      // Start/stop animation based on play state
+      function updatePlayState(isPlaying) {
+        if (isPlaying) {
+          if (!animationFrameId) {
+            lastUpdateTime = Date.now();
+            animate();
+          }
+        } else {
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
           }
         }
       }
@@ -268,20 +636,18 @@
 
         if (!data || data.error) {
           container.innerHTML = '<div class="no-song">No song is currently playing</div>';
+          document.getElementById("lyrics-container").innerHTML = "";
           currentSongId = null;
           isPlaying = false;
           return;
         }
 
-        // Update playing state and progress
         isPlaying = data.is_playing;
         lastProgressMs = data.progress_ms;
         lastUpdateTime = Date.now();
 
-        // Generate a unique ID for the current song
         const songId = `${data.name}-${data.artist}`;
 
-        // Only rebuild the entire player if the song has changed
         if (currentSongId !== songId) {
           currentSongId = songId;
 
@@ -299,20 +665,25 @@
                 <div class="time" id="time-display"></div>
               </div>
             </div>
-            <div class="lyrics-container" id="lyrics-container">
-              ${
-                data.lyrics
-                  ? data.lyrics
-                      .map(
-                        (line) => `
-                <div class="lyrics-line" data-time="${line.startTimeMs}">${line.words}</div>
-              `
-                      )
-                      .join("")
-                  : '<div class="no-song">No lyrics available</div>'
-              }
-            </div>
           `;
+
+          // Update lyrics container with wrapper
+          const lyricsContainer = document.getElementById("lyrics-container");
+          if (data.lyrics) {
+            lyricsContainer.innerHTML = `
+              <div class="lyrics-wrapper">
+                ${data.lyrics
+                  .map(
+                    (line) => `
+                    <div class="lyrics-line" data-time="${line.startTimeMs}">${line.words}</div>
+                  `
+                  )
+                  .join("")}
+              </div>
+            `;
+          } else {
+            lyricsContainer.innerHTML = '<div class="lyrics-wrapper"><div class="no-lyrics">No lyrics available</div></div>';
+          }
         }
 
         // Update progress elements
@@ -322,16 +693,9 @@
 
         progressBar.style.width = `${progressPercent}%`;
         timeDisplay.textContent = `${formatTime(data.progress_ms)} / ${formatTime(data.duration_ms)}`;
-      }
 
-      // Use requestAnimationFrame for smoother updates
-      function animate() {
-        updateProgressLocally();
-        requestAnimationFrame(animate);
+        updatePlayState(isPlaying);
       }
-
-      // Start the animation loop
-      animate();
 
       // Fetch updates every 500ms
       setInterval(fetchCurrentSong, 500);
@@ -365,6 +729,172 @@
           console.error("Error fetching current song:", error);
         }
       }
+
+      // Task management functions
+      let tasks = [];
+
+      async function loadTasks() {
+        try {
+          const response = await fetch("/tasks");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to load tasks");
+          }
+
+          tasks = data;
+          renderTasks();
+        } catch (error) {
+          console.error("Error loading tasks:", error);
+          document.getElementById("task-list").innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5);">Error loading tasks</div>';
+        }
+      }
+
+      function renderTasks() {
+        const taskList = document.getElementById("task-list");
+        if (!taskList) return;
+
+        if (tasks.length === 0) {
+          taskList.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5);">No tasks yet</div>';
+          return;
+        }
+
+        // Sort tasks by priority (3=High, 2=Medium, 1=Low)
+        const sortedTasks = [...tasks].sort((a, b) => b.priority - a.priority);
+
+        taskList.innerHTML = sortedTasks
+          .map(
+            (task) => `
+          <div class="task-item" data-id="${task.id}">
+            <input 
+              type="checkbox" 
+              class="task-checkbox" 
+              onchange="confirmTaskCompletion(${task.id}, this)"
+            >
+            <div class="task-content">
+              <div class="task-title">${task.title}</div>
+              ${task.description ? `<div class="task-description">${task.description}</div>` : ""}
+              ${task.due_date ? `<div class="task-due-date">Due: ${new Date(task.due_date).toLocaleString()}</div>` : ""}
+            </div>
+            <span class="priority-badge priority-${task.priority}">
+              ${task.priority === 1 ? "Low" : task.priority === 2 ? "Medium" : "High"}
+            </span>
+            <div class="task-confirm">
+              <span>Complete this task?</span>
+              <button class="confirm-yes" onclick="completeTask(${task.id})">Yes</button>
+              <button class="confirm-no" onclick="cancelTaskCompletion(${task.id})">No</button>
+            </div>
+          </div>
+        `
+          )
+          .join("");
+      }
+
+      function confirmTaskCompletion(taskId, checkbox) {
+        // Uncheck the checkbox immediately
+        checkbox.checked = false;
+
+        // Show confirmation dialog
+        const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+        const confirmDialog = taskElement.querySelector(".task-confirm");
+        confirmDialog.classList.add("show");
+      }
+
+      function cancelTaskCompletion(taskId) {
+        const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+        const confirmDialog = taskElement.querySelector(".task-confirm");
+        confirmDialog.classList.remove("show");
+      }
+
+      async function completeTask(taskId) {
+        try {
+          const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+
+          // Add removing animation
+          taskElement.classList.add("removing");
+
+          // Wait for animation
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
+          const response = await fetch(`/tasks/${taskId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              completed: true,
+            }),
+          });
+
+          if (!response.ok) throw new Error("Failed to update task");
+
+          // Remove task from local array
+          tasks = tasks.filter((task) => task.id !== taskId);
+
+          // Re-render tasks
+          renderTasks();
+        } catch (error) {
+          console.error("Error completing task:", error);
+          // Remove animation if there's an error
+          const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+          taskElement.classList.remove("removing");
+          cancelTaskCompletion(taskId);
+        }
+      }
+
+      function showTaskModal() {
+        document.getElementById("task-modal").style.display = "flex";
+      }
+
+      function closeTaskModal() {
+        document.getElementById("task-modal").style.display = "none";
+        document.getElementById("task-form").reset();
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("add-task-btn").addEventListener("click", showTaskModal);
+
+        document.getElementById("task-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          try {
+            const formData = {
+              title: document.getElementById("task-title").value.trim(),
+              description: document.getElementById("task-description").value.trim(),
+              due_date: document.getElementById("task-due-date").value || null,
+              priority: parseInt(document.getElementById("task-priority").value),
+            };
+
+            console.log("Sending task data:", formData); // Debug log
+
+            const response = await fetch("/tasks", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error || "Failed to create task");
+            }
+
+            console.log("Server response:", data); // Debug log
+
+            closeTaskModal();
+            await loadTasks();
+          } catch (error) {
+            console.error("Error creating task:", error);
+            alert("Failed to create task: " + error.message);
+          }
+        });
+
+        // Initial load
+        loadTasks();
+      });
     </script>
   </body>
 </html>

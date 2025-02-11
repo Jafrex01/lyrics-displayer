@@ -1,10 +1,12 @@
 services:
   - type: web
-    name: spotify-lyrics-display
+    name: spotify-tasks-app
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
