@@ -43,6 +43,11 @@ class Task(db.Model):
     def __repr__(self):
         return f'<Task {self.title}>'
 
+# Create tables before first request
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
 # Cache lyrics results for 1 hour
 @lru_cache(maxsize=100)
 def get_lrc_lyrics(artist, title):
@@ -256,4 +261,6 @@ def update_task(task_id):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # This will create tables when running locally
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
