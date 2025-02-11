@@ -200,11 +200,17 @@
       let currentSongId = null;
       let lastProgressMs = 0;
       let isPlaying = false;
+      let lastUpdateTime = 0;
 
       function updateProgressLocally() {
         if (!isPlaying) return;
 
-        lastProgressMs += 1000;
+        const now = Date.now();
+        const timeDiff = now - lastUpdateTime;
+        lastUpdateTime = now;
+
+        // Update progress more smoothly
+        lastProgressMs += timeDiff;
         const progressBar = document.getElementById("progress-bar");
         const timeDisplay = document.getElementById("time-display");
         const durationMs = parseInt(progressBar.dataset.duration);
@@ -214,28 +220,46 @@
           progressBar.style.width = `${progressPercent}%`;
           timeDisplay.textContent = `${formatTime(lastProgressMs)} / ${formatTime(durationMs)}`;
 
-          // Update lyrics highlighting with strict timing
+          // Update lyrics highlighting with improved timing
           const lyricsContainer = document.getElementById("lyrics-container");
-          const allLyrics = lyricsContainer.getElementsByClassName("lyrics-line");
-          let activeLineFound = false;
+          if (lyricsContainer) {
+            const allLyrics = Array.from(lyricsContainer.getElementsByClassName("lyrics-line"));
+            let activeIndex = -1;
 
-          Array.from(allLyrics).forEach((line) => {
-            const startTime = parseInt(line.dataset.time);
-            const nextLine = line.nextElementSibling;
-            const nextStartTime = nextLine ? parseInt(nextLine.dataset.time) : Infinity;
+            // Find the current active line
+            for (let i = 0; i < allLyrics.length; i++) {
+              const currentLine = allLyrics[i];
+              const nextLine = allLyrics[i + 1];
+              const currentStartTime = parseInt(currentLine.dataset.time);
+              const nextStartTime = nextLine ? parseInt(nextLine.dataset.time) : Infinity;
 
-            // Highlight only if we're between this line's start time and the next line's start time
-            if (!activeLineFound && startTime <= lastProgressMs && lastProgressMs < nextStartTime) {
-              if (!line.classList.contains("active")) {
-                line.classList.add("active");
-                // Smooth scroll to keep active line centered
-                line.scrollIntoView({ behavior: "smooth", block: "center" });
+              // Add a small buffer (50ms) to prevent flickering
+              if (currentStartTime <= lastProgressMs && lastProgressMs < nextStartTime - 50) {
+                activeIndex = i;
+                break;
               }
-              activeLineFound = true;
-            } else {
-              line.classList.remove("active");
             }
-          });
+
+            // Update classes and scroll if needed
+            allLyrics.forEach((line, index) => {
+              if (index === activeIndex) {
+                if (!line.classList.contains("active")) {
+                  line.classList.add("active");
+                  // Smooth scroll with offset
+                  const container = document.getElementById("lyrics-container");
+                  const lineTop = line.offsetTop;
+                  const containerHeight = container.clientHeight;
+                  const scrollTo = lineTop - containerHeight / 2 + line.clientHeight / 2;
+                  container.scrollTo({
+                    top: scrollTo,
+                    behavior: "smooth",
+                  });
+                }
+              } else {
+                line.classList.remove("active");
+              }
+            });
+          }
         }
       }
 
@@ -252,6 +276,7 @@
         // Update playing state and progress
         isPlaying = data.is_playing;
         lastProgressMs = data.progress_ms;
+        lastUpdateTime = Date.now();
 
         // Generate a unique ID for the current song
         const songId = `${data.name}-${data.artist}`;
@@ -299,24 +324,47 @@
         timeDisplay.textContent = `${formatTime(data.progress_ms)} / ${formatTime(data.duration_ms)}`;
       }
 
+      // Use requestAnimationFrame for smoother updates
+      function animate() {
+        updateProgressLocally();
+        requestAnimationFrame(animate);
+      }
+
+      // Start the animation loop
+      animate();
+
+      // Fetch updates every 500ms
+      setInterval(fetchCurrentSong, 500);
+
+      // Initial fetch
+      fetchCurrentSong();
+
       async function fetchCurrentSong() {
         try {
-          const response = await fetch("/current-song");
-          const data = await response.json();
-          updatePlayer(data);
+          // Get quick update first
+          const quickResponse = await fetch("/current-song-quick");
+          const quickData = await quickResponse.json();
+
+          if (quickData.error) {
+            updatePlayer(null);
+            return;
+          }
+
+          // Check if song has changed
+          const newSongId = `${quickData.name}-${quickData.artist}`;
+          if (newSongId !== currentSongId) {
+            // If song changed, get full data with lyrics
+            const fullResponse = await fetch("/current-song");
+            const fullData = await fullResponse.json();
+            updatePlayer(fullData);
+          } else {
+            // If same song, just update progress
+            updatePlayer(quickData);
+          }
         } catch (error) {
           console.error("Error fetching current song:", error);
         }
       }
-
-      // Update progress locally every 1 second
-      setInterval(updateProgressLocally, 1000);
-
-      // Fetch from Spotify API every 5 seconds
-      setInterval(fetchCurrentSong, 5000);
-
-      // Initial fetch
-      fetchCurrentSong();
     </script>
   </body>
 </html>

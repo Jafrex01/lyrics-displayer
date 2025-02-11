@@ -71,34 +71,51 @@ def get_lrc_lyrics(artist, title):
         print(f"Error fetching lyrics from lrclib: {e}")
         return None
 
+# Cache Spotify API results for 1 second
+@lru_cache(maxsize=1)
+def get_current_playback():
+    return sp.current_playback()
+
+def get_current_playback_with_timeout():
+    current_time = time.time()
+    # Reduce cache time to 0.5 seconds for faster updates
+    if hasattr(get_current_playback, 'last_call'):
+        if current_time - get_current_playback.last_call < 0.5:  # Reduced from 1.0 to 0.5
+            return get_current_playback()
+    
+    get_current_playback.cache_clear()
+    get_current_playback.last_call = current_time
+    return get_current_playback()
+
 def get_current_song():
     try:
-        current_track = sp.current_user_playing_track()
-        if current_track is not None:
-            song_name = current_track['item']['name']
-            artist_name = current_track['item']['artists'][0]['name']
+        # Use the timeout version for consistency
+        playback_state = get_current_playback_with_timeout()
+        
+        if not playback_state or not playback_state['item']:
+            return None
             
-            # Get album artwork
-            album_art = current_track['item']['album']['images'][0]['url'] if current_track['item']['album']['images'] else None
-            
-            # Get the exact playback position
-            playback_state = sp.current_playback()
-            exact_progress = playback_state['progress_ms'] if playback_state else current_track['progress_ms']
-            
-            # Use cached lyrics lookup
-            lyrics = get_lrc_lyrics(artist_name, song_name)
-            
-            return {
-                'name': song_name,
-                'artist': artist_name,
-                'progress_ms': exact_progress,
-                'is_playing': current_track['is_playing'],
-                'lyrics': lyrics,
-                'timestamp': int(time.time() * 1000),  # Add server timestamp
-                'album_art': album_art,  # Add album artwork URL
-                'duration_ms': current_track['item']['duration_ms']  # Add total duration
-            }
-        return None
+        current_track = playback_state['item']
+        song_name = current_track['name']
+        artist_name = current_track['artists'][0]['name']
+        
+        # Prepare basic response first
+        response = {
+            'name': song_name,
+            'artist': artist_name,
+            'progress_ms': playback_state['progress_ms'],
+            'is_playing': playback_state['is_playing'],
+            'timestamp': int(time.time() * 1000),
+            'album_art': current_track['album']['images'][0]['url'] if current_track['album']['images'] else None,
+            'duration_ms': current_track['duration_ms']
+        }
+        
+        # Get lyrics asynchronously if needed
+        lyrics = get_lrc_lyrics(artist_name, song_name)
+        if lyrics:
+            response['lyrics'] = lyrics
+        
+        return response
     except Exception as e:
         print(f"Error getting current song: {e}")
         return None
@@ -113,6 +130,28 @@ def current_song():
     if song_info is None:
         return jsonify({'error': 'No song playing'})
     return jsonify(song_info)
+
+# Add a new endpoint for faster updates without lyrics
+@app.route('/current-song-quick')
+def current_song_quick():
+    try:
+        playback_state = get_current_playback_with_timeout()
+        if not playback_state or not playback_state['item']:
+            return jsonify({'error': 'No song playing'})
+            
+        current_track = playback_state['item']
+        return jsonify({
+            'name': current_track['name'],
+            'artist': current_track['artists'][0]['name'],
+            'progress_ms': playback_state['progress_ms'],
+            'is_playing': playback_state['is_playing'],
+            'timestamp': int(time.time() * 1000),
+            'album_art': current_track['album']['images'][0]['url'] if current_track['album']['images'] else None,
+            'duration_ms': current_track['duration_ms']
+        })
+    except Exception as e:
+        print(f"Error getting quick song update: {e}")
+        return jsonify({'error': 'Error fetching song data'})
 
 if __name__ == '__main__':
     # Use production mode if environment variable is set

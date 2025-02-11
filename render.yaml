@@ -3,7 +3,7 @@ services:
     name: spotify-lyrics-display
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn app:app
     envVars:
       - key: SPOTIFY_CLIENT_ID
         sync: false
