@@ -44,9 +44,17 @@ class Task(db.Model):
         return f'<Task {self.title}>'
 
 # Create tables before first request
-@app.before_first_request
-def create_tables():
-    db.create_all()
+# @app.before_first_request
+
+# Instead, use this approach:
+with app.app_context():
+    # Put your initialization code here
+    # Whatever code was in your before_first_request function should go here
+
+    @lru_cache(maxsize=100)
+    def your_function():
+        # function code here
+        pass
 
 # Cache lyrics results for 1 hour
 @lru_cache(maxsize=100)
