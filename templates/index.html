@@ -128,7 +128,7 @@
         <!-- Update the spacing and progress bar section -->
         <div class="flex-[3] border-b border-gray-200 p-6 flex flex-col justify-between">
           <!-- Song / Artist - reduced bottom margin -->
-          <div id="player-container" class="mb-1">
+          <div id="player-container" class="mb-0">
             <div class="flex items-center">
               <img src="https://via.placeholder.com/80" alt="Album Cover" class="w-16 h-16 rounded-lg shadow-lg object-cover mr-3" />
               <div>
@@ -139,7 +139,7 @@
           </div>
 
           <!-- Lyrics container - reduced top margin -->
-          <div id="lyrics-container" class="flex-1 px-6 py-4 mt-0 mb-2 rounded-lg bg-gray-50">
+          <div id="lyrics-container" class="flex-1 px-6 py-3 mt-0 mb-2 rounded-lg bg-gray-50">
             <div class="lyrics-wrapper">
               <!-- Lyrics will be populated here -->
             </div>
@@ -423,7 +423,7 @@
       }
 
       // Change from 500ms to 1000ms to reduce API load
-      setInterval(fetchCurrentSong, 1000);
+      setInterval(fetchCurrentSong, 500);
       fetchCurrentSong();
       async function fetchCurrentSong() {
         try {
