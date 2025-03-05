@@ -218,91 +218,85 @@
         return `${minutes}:${seconds.toString().padStart(2, "0")}`;
       }
 
-      let currentSongId = null;
       let lastProgressMs = 0;
-      let isPlaying = false;
-      let lastUpdateTime = 0;
       let durationMs = 0;
-      let lastApiProgressMs = 0; // Add this to track API progress
-      let updateThreshold = 1000; // Minimum time between progress corrections
-      let lastProgressUpdate = 0; // Last time we corrected the progress
+      let isPlaying = false;
+      let currentSongId = null;
+      let lastUpdateTime = Date.now();
+      let animationFrameId = null;
+      let lastRenderTime = 0;
+      const RENDER_INTERVAL = 50; // Render every 50ms instead of every frame
 
       function updateProgressLocally() {
         if (!isPlaying) return;
 
         const now = Date.now();
-        const timeDiff = Math.min(now - lastUpdateTime, 50); // Cap the time difference at 50ms
+        const timeDiff = Math.min(now - lastUpdateTime, 50); // Cap time difference
         lastUpdateTime = now;
 
         lastProgressMs += timeDiff;
-        const progressBar = document.getElementById("progress-bar");
-        if (!progressBar || !progressBar.dataset.duration) return;
-
-        // Only update display if significant change
-        if (Math.abs(lastProgressMs - lastApiProgressMs) > 1000) {
-          if (now - lastProgressUpdate > updateThreshold) {
-            lastProgressMs = lastApiProgressMs;
-            lastProgressUpdate = now;
-          }
+        if (lastProgressMs > durationMs) {
+          lastProgressMs = durationMs;
         }
 
-        const currentTimeDisplay = document.getElementById("time-display-current");
-        const totalTimeDisplay = document.getElementById("time-display-total");
-        currentTimeDisplay.textContent = formatTime(lastProgressMs);
-        totalTimeDisplay.textContent = formatTime(durationMs);
+        // Throttle visual updates
+        if (now - lastRenderTime >= RENDER_INTERVAL) {
+          const progressBar = document.getElementById("progress-bar");
+          const currentTimeDisplay = document.getElementById("time-display-current");
+          const totalTimeDisplay = document.getElementById("time-display-total");
 
-        if (lastProgressMs <= durationMs) {
-          const progressPercent = (lastProgressMs / durationMs) * 100;
-          progressBar.style.width = `${progressPercent}%`;
-
-          const lyricsContainer = document.getElementById("lyrics-container");
-          const lyricsWrapper = lyricsContainer.querySelector(".lyrics-wrapper");
-
-          if (lyricsWrapper) {
-            const allLyricPairs = Array.from(lyricsWrapper.getElementsByClassName("lyrics-line-pair"));
-            let activePairIndex = -1;
-
-            // Add hysteresis to prevent twitching
-            const hysteresis = 100; // 100ms buffer
-
-            for (let i = 0; i < allLyricPairs.length; i++) {
-              const pair = allLyricPairs[i];
-              const lines = Array.from(pair.getElementsByClassName("lyrics-line"));
-              const middleTime = parseInt(lines[1].dataset.time);
-              const nextPair = allLyricPairs[i + 1];
-              const nextTime = nextPair ? parseInt(nextPair.getElementsByClassName("lyrics-line")[1].dataset.time) : Infinity;
-
-              if (lastProgressMs >= middleTime - hysteresis && lastProgressMs < nextTime - hysteresis) {
-                if (activePairIndex !== i) {
-                  activePairIndex = i;
-                }
-                break;
-              }
-            }
-
-            // Only update classes if active pair changed
-            if (activePairIndex !== -1) {
-              allLyricPairs.forEach((pair, index) => {
-                const isActive = index === activePairIndex;
-                if (isActive && !pair.classList.contains("visible")) {
-                  pair.classList.add("visible");
-                  pair.classList.remove("previous");
-                  const lines = Array.from(pair.getElementsByClassName("lyrics-line"));
-                  lines[0].classList.add("previous");
-                  lines[1].classList.add("active");
-                  lines[2].classList.add("future");
-                } else if (!isActive) {
-                  pair.classList.remove("visible", "previous");
-                  const lines = Array.from(pair.getElementsByClassName("lyrics-line"));
-                  lines.forEach((line) => line.classList.remove("active", "previous", "future"));
-                }
-              });
-            }
+          if (progressBar && currentTimeDisplay && totalTimeDisplay) {
+            const progressPercent = (lastProgressMs / durationMs) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            currentTimeDisplay.textContent = formatTime(lastProgressMs);
+            totalTimeDisplay.textContent = formatTime(durationMs);
           }
+
+          updateLyrics();
+          lastRenderTime = now;
         }
       }
 
-      let animationFrameId = null;
+      function updateLyrics() {
+        const lyricsWrapper = document.querySelector(".lyrics-wrapper");
+        if (!lyricsWrapper) return;
+
+        const allLyricPairs = Array.from(lyricsWrapper.getElementsByClassName("lyrics-line-pair"));
+        if (!allLyricPairs.length) return;
+
+        const hysteresis = 100;
+        let activePairIndex = -1;
+
+        for (let i = 0; i < allLyricPairs.length; i++) {
+          const pair = allLyricPairs[i];
+          const lines = Array.from(pair.getElementsByClassName("lyrics-line"));
+          const middleTime = parseInt(lines[1]?.dataset.time || 0);
+          const nextPair = allLyricPairs[i + 1];
+          const nextTime = nextPair ? parseInt(nextPair.getElementsByClassName("lyrics-line")[1]?.dataset.time || Infinity) : Infinity;
+
+          if (lastProgressMs >= middleTime - hysteresis && lastProgressMs < nextTime - hysteresis) {
+            if (activePairIndex !== i) {
+              activePairIndex = i;
+              // Only update classes if the active pair has changed
+              allLyricPairs.forEach((p, idx) => {
+                if (idx === i && !p.classList.contains("visible")) {
+                  p.classList.add("visible");
+                  p.classList.remove("previous");
+                  const ls = Array.from(p.getElementsByClassName("lyrics-line"));
+                  ls[0]?.classList.add("previous");
+                  ls[1]?.classList.add("active");
+                  ls[2]?.classList.add("future");
+                } else if (idx !== i && p.classList.contains("visible")) {
+                  p.classList.remove("visible", "previous");
+                  const ls = Array.from(p.getElementsByClassName("lyrics-line"));
+                  ls.forEach((l) => l.classList.remove("active", "previous", "future"));
+                }
+              });
+            }
+            break;
+          }
+        }
+      }
 
       function animate() {
         updateProgressLocally();
@@ -331,14 +325,7 @@
         }
 
         isPlaying = data.is_playing;
-        lastApiProgressMs = data.progress_ms; // Store API progress separately
-
-        // Only update local progress if difference is significant
-        if (Math.abs(lastProgressMs - data.progress_ms) > 1000) {
-          lastProgressMs = data.progress_ms;
-          lastProgressUpdate = Date.now();
-        }
-
+        lastProgressMs = data.progress_ms;
         lastUpdateTime = Date.now();
         durationMs = data.duration_ms;
 
@@ -422,33 +409,40 @@
         }
       }
 
-      // Change from 500ms to 1000ms to reduce API load
-      setInterval(fetchCurrentSong, 500);
-      fetchCurrentSong();
+      // Modify the fetchCurrentSong interval
+      let fetchInterval = 1000; // Keep at 1 second
       async function fetchCurrentSong() {
-        try {
-          const quickResponse = await fetch("/current-song-quick");
-          const quickData = await quickResponse.json();
-          if (quickData.error) {
-            updatePlayer(null);
-            return;
-          }
+        if (!document.hidden) {
+          // Only fetch if page is visible
+          try {
+            const quickResponse = await fetch("/current-song-quick");
+            const quickData = await quickResponse.json();
 
-          const newSongId = `${quickData.name}-${quickData.artist}`;
-          if (newSongId !== currentSongId) {
-            const fullResponse = await fetch("/current-song");
-            const fullData = await fullResponse.json();
-            updatePlayer(fullData);
-          } else {
-            updatePlayer(quickData);
+            if (quickData.error) {
+              isPlaying = false;
+              return;
+            }
+
+            const newSongId = `${quickData.name}-${quickData.artist}`;
+            if (newSongId !== currentSongId) {
+              const fullResponse = await fetch("/current-song");
+              const fullData = await fullResponse.json();
+              if (!fullData.error) {
+                await updatePlayer(fullData);
+              }
+            } else {
+              await updatePlayer(quickData);
+            }
+          } catch (error) {
+            console.error("Error fetching current song:", error);
           }
-        } catch (error) {
-          console.error("Error fetching current song:", error);
         }
       }
 
-      document.addEventListener("DOMContentLoaded", function () {
+      // Initialize with a longer interval
+      document.addEventListener("DOMContentLoaded", () => {
         fetchCurrentSong();
+        setInterval(fetchCurrentSong, fetchInterval);
       });
     </script>
   </body>
