@@ -173,7 +173,7 @@
         <!-- TOP-RIGHT: Time & Weather -->
         <div class="flex-[2] p-6">
           <div class="text-right">
-            <p class="text-4xl font-bold mb-1">10:46 PM</p>
+            <p class="text-4xl font-bold mb-1"><!-- Time will be updated by JS --></p>
             <p class="text-xl text-gray-600">Cloudy • 24°C</p>
             <p class="text-sm text-gray-500">Karachi, Pakistan</p>
           </div>
@@ -409,6 +409,24 @@
         }
       }
 
+      // Add this function before the existing script code
+      function updateDateTime() {
+        const now = new Date();
+        const timeElement = document.querySelector(".text-4xl.font-bold");
+        const weatherElement = document.querySelector(".text-xl.text-gray-600");
+
+        // Update time in 12-hour format
+        const timeString = now.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        if (timeElement) {
+          timeElement.textContent = timeString;
+        }
+      }
+
       // Modify the fetchCurrentSong interval
       let fetchInterval = 1000; // Keep at 1 second
       async function fetchCurrentSong() {
@@ -441,6 +459,13 @@
 
       // Initialize with a longer interval
       document.addEventListener("DOMContentLoaded", () => {
+        // Initial update
+        updateDateTime();
+
+        // Update time every second
+        setInterval(updateDateTime, 1000);
+
+        // Existing code
         fetchCurrentSong();
         setInterval(fetchCurrentSong, fetchInterval);
       });
